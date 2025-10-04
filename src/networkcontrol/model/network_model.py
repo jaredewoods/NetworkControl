@@ -2,9 +2,13 @@ import socket
 import psutil
 import subprocess
 import re
+import json
 import wmi
 
 
+# ------------------------------------------------------------
+# Helper: Parse DHCP + Gateway info via netsh
+# ------------------------------------------------------------
 def _parse_dhcp_and_gateway():
     """
     Return dicts for {adapter_name: dhcp_mode} and {adapter_name: gateway_ip}
@@ -16,7 +20,10 @@ def _parse_dhcp_and_gateway():
     try:
         result = subprocess.run(
             ["netsh", "interface", "ip", "show", "config"],
-            capture_output=True, text=True, encoding="utf-8", errors="ignore"
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
         )
         current_adapter = None
         for line in result.stdout.splitlines():
@@ -46,6 +53,9 @@ def _parse_dhcp_and_gateway():
     return dhcp_modes, gateways
 
 
+# ------------------------------------------------------------
+# Helper: Get adapter hardware descriptions via WMI
+# ------------------------------------------------------------
 def _get_adapter_descriptions():
     """
     Return {adapter_name: friendly_description} using WMI.
@@ -62,8 +72,11 @@ def _get_adapter_descriptions():
     return descriptions
 
 
+# ------------------------------------------------------------
+# Normal / Fast Scan (psutil + WMI + netsh)
+# ------------------------------------------------------------
 def get_network_interfaces():
-    """Return list of real NICs with IP, subnet, gateway, DHCP mode, and description."""
+    """Return list of real network interfaces with IP, subnet, gateway, DHCP mode."""
     interfaces = psutil.net_if_addrs()
     dhcp_modes, gateway_map = _parse_dhcp_and_gateway()
     desc_map = _get_adapter_descriptions()
@@ -81,7 +94,13 @@ def get_network_interfaces():
 
         dhcp_mode = dhcp_modes.get(name, "Unknown")
         gateway = gateway_map.get(name, "—")
-        description = desc_map.get(name, name)  # fallback to adapter name
+        description = desc_map.get(name, name)
+
+        # Skip Bluetooth and virtual interfaces
+        if any(x in description.lower() for x in ["bluetooth", "virtual", "vmware", "hyper-v", "loopback"]):
+            continue
+        if any(x in name.lower() for x in ["bluetooth", "virtual", "vmware", "hyper-v", "loopback"]):
+            continue
 
         data.append({
             "connection": name,
@@ -94,14 +113,15 @@ def get_network_interfaces():
 
     return data
 
-import subprocess
-import json
 
-
+# ------------------------------------------------------------
+# Deep Scan (PowerShell JSON)
+# ------------------------------------------------------------
 def get_network_interfaces_deep():
     """
     Use PowerShell to gather verified adapter data with real gateways,
     DHCP/Static status, and hardware description.
+    Bluetooth, loopback, and virtual adapters are filtered out.
     """
     cmd = [
         "powershell",
@@ -117,29 +137,62 @@ def get_network_interfaces_deep():
         ),
     ]
 
+    # Patterns to ignore (case-insensitive)
+    ignore_pattern = re.compile(
+        r"(bluetooth|virtual|vmware|hyper-v|loopback|miniport|tap|tunnel|bridge)",
+        re.IGNORECASE,
+    )
+
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="ignore", timeout=10)
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            timeout=10,
+        )
+
         if not result.stdout.strip():
             raise RuntimeError("PowerShell returned no data")
 
         adapters = json.loads(result.stdout)
 
-        # Normalize JSON output to list (PowerShell returns dict if one object)
+        # Normalize to list
         if isinstance(adapters, dict):
             adapters = [adapters]
 
         data = []
         for nic in adapters:
+            desc = nic.get("InterfaceDescription", "") or ""
+            name = nic.get("InterfaceAlias", "") or ""
+            ip = nic.get("IPAddress", "—") or "—"
+
+            # --- Filter out unwanted adapters ---
+            if ignore_pattern.search(desc) or ignore_pattern.search(name):
+                continue
+
+            # Skip entries without IPv4
+            if not ip or ip == "—":
+                continue
+
             data.append({
-                "connection": nic.get("InterfaceAlias", "—"),
-                "description": nic.get("InterfaceDescription", "—"),
-                "ip": nic.get("IPAddress", "—"),
+                "connection": name or "—",
+                "description": desc or "—",
+                "ip": ip,
                 "subnet": str(nic.get("PrefixLength", "—")),
                 "gateway": nic.get("Gateway", "—"),
                 "mode": nic.get("DHCP", "—"),
             })
+
         return data
 
     except Exception as e:
-        # fallback: if anything fails, return an empty list
-        return [{"connection": "Error", "description": str(e), "ip": "—", "subnet": "—", "gateway": "—", "mode": "—"}]
+        return [{
+            "connection": "Error",
+            "description": str(e),
+            "ip": "—",
+            "subnet": "—",
+            "gateway": "—",
+            "mode": "—",
+        }]
