@@ -6,31 +6,106 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>600</height>
+    <width>672</width>
+    <height>829</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Network Control</string>
   </property>
-
-  <!-- Central widget -->
   <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="centralVLayout">
+    <item>
+     <widget class="QWidget" name="controlsWidget" native="true">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>40</height>
+       </size>
+      </property>
+      <widget class="QWidget" name="horizontalLayoutWidget">
+       <property name="geometry">
+        <rect>
+         <x>-1</x>
+         <y>0</y>
+         <width>181</width>
+         <height>42</height>
+        </rect>
+       </property>
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <item>
+         <widget class="QPushButton" name="btnRefresh">
+          <property name="text">
+           <string>Refresh</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btnDeepScan">
+          <property name="text">
+           <string>Deep Scan</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+    <item>
+     <widget class="QTableWidget" name="tableNetwork">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="sortingEnabled">
+       <bool>true</bool>
+      </property>
+      <column>
+       <property name="text">
+        <string notr="true">Connection</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Description</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>IP Address</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Subnet</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Gateway</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>DHCP/Static</string>
+       </property>
+      </column>
+     </widget>
+    </item>
+   </layout>
   </widget>
-
-  <!-- Menu bar -->
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>672</width>
      <height>22</height>
     </rect>
    </property>
   </widget>
-
-  <!-- Status bar -->
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
  <resources/>
