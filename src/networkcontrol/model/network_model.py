@@ -93,3 +93,53 @@ def get_network_interfaces():
         })
 
     return data
+
+import subprocess
+import json
+
+
+def get_network_interfaces_deep():
+    """
+    Use PowerShell to gather verified adapter data with real gateways,
+    DHCP/Static status, and hardware description.
+    """
+    cmd = [
+        "powershell",
+        "-Command",
+        (
+            "Get-NetIPConfiguration | Select-Object "
+            "InterfaceAlias, InterfaceDescription, "
+            "@{n='IPAddress';e={$_.IPv4Address.IPAddress}}, "
+            "@{n='PrefixLength';e={$_.IPv4Address.PrefixLength}}, "
+            "@{n='Gateway';e={$_.IPv4DefaultGateway.NextHop}}, "
+            "@{n='DHCP';e={if ($_.NetIPInterface.Dhcp -eq 'Enabled') {'DHCP'} else {'Static'}}} "
+            "| ConvertTo-Json -Depth 3"
+        ),
+    ]
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="ignore", timeout=10)
+        if not result.stdout.strip():
+            raise RuntimeError("PowerShell returned no data")
+
+        adapters = json.loads(result.stdout)
+
+        # Normalize JSON output to list (PowerShell returns dict if one object)
+        if isinstance(adapters, dict):
+            adapters = [adapters]
+
+        data = []
+        for nic in adapters:
+            data.append({
+                "connection": nic.get("InterfaceAlias", "—"),
+                "description": nic.get("InterfaceDescription", "—"),
+                "ip": nic.get("IPAddress", "—"),
+                "subnet": str(nic.get("PrefixLength", "—")),
+                "gateway": nic.get("Gateway", "—"),
+                "mode": nic.get("DHCP", "—"),
+            })
+        return data
+
+    except Exception as e:
+        # fallback: if anything fails, return an empty list
+        return [{"connection": "Error", "description": str(e), "ip": "—", "subnet": "—", "gateway": "—", "mode": "—"}]
