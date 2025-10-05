@@ -6,16 +6,28 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>721</width>
-    <height>421</height>
+    <width>720</width>
+    <height>299</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <property name="windowTitle">
    <string>Network Control</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="centralVLayout">
-    <item>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <layout class="QGridLayout" name="gridLayout_2">
+    <item row="0" column="0">
      <widget class="QWidget" name="controlsWidget" native="true">
       <property name="minimumSize">
        <size>
@@ -23,31 +35,31 @@
         <height>40</height>
        </size>
       </property>
-      <widget class="QWidget" name="horizontalLayoutWidget">
+      <widget class="QFrame" name="horizontalFrame">
        <property name="geometry">
         <rect>
          <x>-1</x>
          <y>0</y>
-         <width>411</width>
+         <width>268</width>
          <height>42</height>
         </rect>
        </property>
-       <layout class="QHBoxLayout" name="horizontalLayout_2">
-        <item>
+       <layout class="QGridLayout" name="gridLayout">
+        <item row="0" column="0">
          <widget class="QPushButton" name="btnRefresh">
           <property name="text">
            <string>Refresh</string>
           </property>
          </widget>
         </item>
-        <item>
+        <item row="0" column="1">
          <widget class="QPushButton" name="btnDeepScan">
           <property name="text">
            <string>Deep Scan</string>
           </property>
          </widget>
         </item>
-        <item>
+        <item row="0" column="2">
          <widget class="QPushButton" name="btnApply">
           <property name="text">
            <string>Apply Changes</string>
@@ -58,10 +70,10 @@
       </widget>
      </widget>
     </item>
-    <item>
+    <item row="1" column="0">
      <widget class="QTableWidget" name="tableNetwork">
       <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
         <horstretch>0</horstretch>
         <verstretch>0</verstretch>
        </sizepolicy>
@@ -122,7 +134,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>721</width>
+     <width>720</width>
      <height>22</height>
     </rect>
    </property>
