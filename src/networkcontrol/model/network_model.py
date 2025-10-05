@@ -65,7 +65,7 @@ def _get_adapter_descriptions():
     try:
         c = wmi.WMI()
         for nic in c.Win32_NetworkAdapter():
-            if nic.NetConnectionID:  # skip disconnected / virtual
+            if nic.NetConnectionID:
                 descriptions[nic.NetConnectionID] = nic.Name
     except Exception:
         pass
@@ -76,10 +76,11 @@ def _get_adapter_descriptions():
 # Normal / Fast Scan (psutil + WMI + netsh)
 # ------------------------------------------------------------
 def get_network_interfaces():
-    """Return list of real network interfaces with IP, subnet, gateway, DHCP mode."""
+    """Return list of real network interfaces with IP, subnet, gateway, DHCP mode, and link status."""
     interfaces = psutil.net_if_addrs()
     dhcp_modes, gateway_map = _parse_dhcp_and_gateway()
     desc_map = _get_adapter_descriptions()
+    stats = psutil.net_if_stats()
 
     data = []
     for name, addrs in interfaces.items():
@@ -96,11 +97,17 @@ def get_network_interfaces():
         gateway = gateway_map.get(name, "—")
         description = desc_map.get(name, name)
 
-        # Skip Bluetooth and virtual interfaces
         if any(x in description.lower() for x in ["bluetooth", "virtual", "vmware", "hyper-v", "loopback"]):
             continue
         if any(x in name.lower() for x in ["bluetooth", "virtual", "vmware", "hyper-v", "loopback"]):
             continue
+
+        link_status = "Up"
+        try:
+            if name in stats and not stats[name].isup:
+                link_status = "Down"
+        except Exception:
+            pass
 
         data.append({
             "connection": name,
@@ -108,7 +115,8 @@ def get_network_interfaces():
             "ip": ipv4,
             "subnet": subnet,
             "gateway": gateway,
-            "mode": dhcp_mode
+            "mode": dhcp_mode,
+            "link": link_status
         })
 
     return data
@@ -137,11 +145,12 @@ def get_network_interfaces_deep():
         ),
     ]
 
-    # Patterns to ignore (case-insensitive)
     ignore_pattern = re.compile(
         r"(bluetooth|virtual|vmware|hyper-v|loopback|miniport|tap|tunnel|bridge)",
         re.IGNORECASE,
     )
+
+    stats = psutil.net_if_stats()
 
     try:
         result = subprocess.run(
@@ -158,7 +167,6 @@ def get_network_interfaces_deep():
 
         adapters = json.loads(result.stdout)
 
-        # Normalize to list
         if isinstance(adapters, dict):
             adapters = [adapters]
 
@@ -168,13 +176,17 @@ def get_network_interfaces_deep():
             name = nic.get("InterfaceAlias", "") or ""
             ip = nic.get("IPAddress", "—") or "—"
 
-            # --- Filter out unwanted adapters ---
             if ignore_pattern.search(desc) or ignore_pattern.search(name):
                 continue
-
-            # Skip entries without IPv4
             if not ip or ip == "—":
                 continue
+
+            link_status = "Up"
+            try:
+                if name in stats and not stats[name].isup:
+                    link_status = "Down"
+            except Exception:
+                pass
 
             data.append({
                 "connection": name or "—",
@@ -183,6 +195,7 @@ def get_network_interfaces_deep():
                 "subnet": str(nic.get("PrefixLength", "—")),
                 "gateway": nic.get("Gateway", "—"),
                 "mode": nic.get("DHCP", "—"),
+                "link": link_status,
             })
 
         return data
@@ -195,4 +208,5 @@ def get_network_interfaces_deep():
             "subnet": "—",
             "gateway": "—",
             "mode": "—",
+            "link": "—",
         }]

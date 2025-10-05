@@ -13,16 +13,15 @@ class MainController:
         self.btn_deep_scan = window.findChild(QtWidgets.QPushButton, "btnDeepScan")
         self.status_bar = window.statusBar()
 
-        # --- Validation of required UI elements ---
         if not self.table:
             raise RuntimeError("UI missing 'tableNetwork'")
         if not self.btn_refresh or not self.btn_deep_scan:
             raise RuntimeError("UI missing one or both scan buttons")
 
-        # --- Initial table population ---
+        # Initial table fill
         self.populate_table()
 
-        # --- Connect buttons ---
+        # Button bindings
         self.btn_refresh.clicked.connect(self.populate_table)
         self.btn_deep_scan.clicked.connect(self.handle_deep_scan)
 
@@ -37,17 +36,7 @@ class MainController:
         try:
             self.table.setRowCount(0)
             interfaces = get_network_interfaces()
-
-            for row, iface in enumerate(interfaces):
-                self.table.insertRow(row)
-                self.table.setItem(row, 0, QtWidgets.QTableWidgetItem(iface["connection"]))
-                self.table.setItem(row, 1, QtWidgets.QTableWidgetItem(iface["description"]))
-                self.table.setItem(row, 2, QtWidgets.QTableWidgetItem(iface["ip"]))
-                self.table.setItem(row, 3, QtWidgets.QTableWidgetItem(iface["subnet"]))
-                self.table.setItem(row, 4, QtWidgets.QTableWidgetItem(iface["gateway"]))
-                self.table.setItem(row, 5, QtWidgets.QTableWidgetItem(iface["mode"]))
-
-            self.table.resizeColumnsToContents()
+            self._populate_table_rows(interfaces)
             self.status_bar.showMessage(f"Loaded {len(interfaces)} adapters.", 4000)
 
         except Exception as e:
@@ -67,17 +56,7 @@ class MainController:
 
         try:
             interfaces = get_network_interfaces_deep()
-
-            for row, iface in enumerate(interfaces):
-                self.table.insertRow(row)
-                self.table.setItem(row, 0, QtWidgets.QTableWidgetItem(iface["connection"]))
-                self.table.setItem(row, 1, QtWidgets.QTableWidgetItem(iface["description"]))
-                self.table.setItem(row, 2, QtWidgets.QTableWidgetItem(iface["ip"]))
-                self.table.setItem(row, 3, QtWidgets.QTableWidgetItem(iface["subnet"]))
-                self.table.setItem(row, 4, QtWidgets.QTableWidgetItem(iface["gateway"]))
-                self.table.setItem(row, 5, QtWidgets.QTableWidgetItem(iface["mode"]))
-
-            self.table.resizeColumnsToContents()
+            self._populate_table_rows(interfaces)
             self.status_bar.showMessage(
                 f"Deep scan loaded {len(interfaces)} adapters.", 6000
             )
@@ -88,3 +67,43 @@ class MainController:
 
         finally:
             QtWidgets.QApplication.restoreOverrideCursor()
+
+    # ------------------------------------------------------------
+    def _populate_table_rows(self, interfaces):
+        """Shared logic for populating the table with plain text link status."""
+        for row, iface in enumerate(interfaces):
+            self.table.insertRow(row)
+
+            # Connection
+            self.table.setItem(row, 0, QtWidgets.QTableWidgetItem(iface["connection"]))
+
+            # --- Link Status (Plain Text) ---
+            link_text = self._get_link_status_text(iface)
+            self.table.setItem(row, 1, QtWidgets.QTableWidgetItem(link_text))
+
+            # Description
+            self.table.setItem(row, 2, QtWidgets.QTableWidgetItem(iface["description"]))
+            # IP
+            self.table.setItem(row, 3, QtWidgets.QTableWidgetItem(iface["ip"]))
+            # Subnet
+            self.table.setItem(row, 4, QtWidgets.QTableWidgetItem(iface["subnet"]))
+            # Gateway
+            self.table.setItem(row, 5, QtWidgets.QTableWidgetItem(iface["gateway"]))
+            # DHCP/Static
+            self.table.setItem(row, 6, QtWidgets.QTableWidgetItem(iface["mode"]))
+
+        self.table.resizeColumnsToContents()
+
+    # ------------------------------------------------------------
+    def _get_link_status_text(self, iface):
+        """Return plain text link status: Internet, Network, or Down."""
+        link_state = iface.get("link", "—").lower()
+        gateway = str(iface.get("gateway", "")).strip()
+
+        if "down" in link_state:
+            return "Down"
+
+        if gateway in ("—", "", "none", "0.0.0.0"):
+            return "Network"
+
+        return "Internet"
