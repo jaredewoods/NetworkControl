@@ -18,6 +18,7 @@ def main():
     controller = MainController(window)
 
     window.show()
+    app.aboutToQuit.connect(controller.worker.stop)
     sys.exit(app.exec())
 
 
