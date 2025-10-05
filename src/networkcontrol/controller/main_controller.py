@@ -168,12 +168,13 @@ class MainController:
             self.table.insertRow(row)
             self._set_readonly(row, 0, iface["connection"])
             self._set_readonly(row, 1, self._get_link_status_text(iface))
-            self._set_readonly(row, 2, iface["description"])
-            self.table.setItem(row, 3, QtWidgets.QTableWidgetItem(iface["ip"]))
-            self.table.setItem(row, 4, QtWidgets.QTableWidgetItem(iface["subnet"]))
-            self.table.setItem(row, 5, QtWidgets.QTableWidgetItem(iface["gateway"]))
-            self.table.setItem(row, 6, QtWidgets.QTableWidgetItem(iface["mode"]))
+            self.table.setItem(row, 2, QtWidgets.QTableWidgetItem(iface["mode"]))     # DHCP/Static
+            self.table.setItem(row, 3, QtWidgets.QTableWidgetItem(iface["ip"]))       # IP
+            self.table.setItem(row, 4, QtWidgets.QTableWidgetItem(iface["subnet"]))   # Subnet
+            self.table.setItem(row, 5, QtWidgets.QTableWidgetItem(iface["gateway"]))  # Gateway
+            self._set_readonly(row, 6, iface["description"])                          # Description
         self.table.resizeColumnsToContents()
+
 
     def _get_text(self, row, col):
         item = self.table.item(row, col)
