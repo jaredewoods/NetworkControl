@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>957</width>
-    <height>829</height>
+    <width>721</width>
+    <height>421</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -28,7 +28,7 @@
         <rect>
          <x>-1</x>
          <y>0</y>
-         <width>181</width>
+         <width>411</width>
          <height>42</height>
         </rect>
        </property>
@@ -47,6 +47,13 @@
           </property>
          </widget>
         </item>
+        <item>
+         <widget class="QPushButton" name="btnApply">
+          <property name="text">
+           <string>Apply Changes</string>
+          </property>
+         </widget>
+        </item>
        </layout>
       </widget>
      </widget>
@@ -58,6 +65,15 @@
         <horstretch>0</horstretch>
         <verstretch>0</verstretch>
        </sizepolicy>
+      </property>
+      <property name="editTriggers">
+       <set>QAbstractItemView::AllEditTriggers</set>
+      </property>
+      <property name="selectionMode">
+       <enum>QAbstractItemView::NoSelection</enum>
+      </property>
+      <property name="selectionBehavior">
+       <enum>QAbstractItemView::SelectItems</enum>
       </property>
       <property name="sortingEnabled">
        <bool>true</bool>
@@ -106,7 +122,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>957</width>
+     <width>721</width>
      <height>22</height>
     </rect>
    </property>
