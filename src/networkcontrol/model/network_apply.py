@@ -9,6 +9,15 @@ All commands are executed in a subprocess and require Administrator privileges.
 import subprocess
 
 
+def _mask_to_prefix(mask: str) -> int:
+    """Convert dotted-decimal subnet mask (e.g. 255.255.255.0) → CIDR prefix length (e.g. 24)."""
+    try:
+        return sum(bin(int(x)).count("1") for x in mask.split("."))
+    except Exception:
+        # Fallback to common /24 if something unexpected occurs
+        return 24
+
+
 def apply_nic_settings(adapter_name: str, ip: str, subnet: str, gateway: str, mode: str) -> dict:
     """
     Apply configuration changes to a network adapter.
@@ -16,7 +25,7 @@ def apply_nic_settings(adapter_name: str, ip: str, subnet: str, gateway: str, mo
     Args:
         adapter_name (str): The Windows interface alias (e.g., "Ethernet", "Wi-Fi")
         ip (str): IPv4 address to assign
-        subnet (str): Prefix length (e.g., 24)
+        subnet (str): Subnet mask (e.g., 255.255.255.0) or prefix length (e.g., 24)
         gateway (str): Default gateway address
         mode (str): Either "DHCP" or "Static"
 
@@ -28,18 +37,28 @@ def apply_nic_settings(adapter_name: str, ip: str, subnet: str, gateway: str, mo
             "stderr": str
         }
     """
-    mode = mode.strip().upper()
+    mode = (mode or "").strip().upper()
     if not adapter_name:
-        return {"success": False, "command": None, "stdout": "", "stderr": "Missing adapter name"}
+        return {
+            "success": False,
+            "command": None,
+            "stdout": "",
+            "stderr": "Missing adapter name"
+        }
 
     if mode == "DHCP":
         # Enable DHCP on adapter
         cmd = f'Set-NetIPInterface -InterfaceAlias "{adapter_name}" -Dhcp Enabled'
     else:
+        # Convert dotted subnet to prefix length if necessary
+        prefix = subnet
+        if "." in subnet:
+            prefix = _mask_to_prefix(subnet)
+
         # Configure static IP settings
         cmd = (
             f'New-NetIPAddress -InterfaceAlias "{adapter_name}" '
-            f'-IPAddress {ip} -PrefixLength {subnet} -DefaultGateway {gateway} '
+            f'-IPAddress {ip} -PrefixLength {prefix} -DefaultGateway {gateway} '
             f'-ErrorAction SilentlyContinue'
         )
 
@@ -52,6 +71,7 @@ def apply_nic_settings(adapter_name: str, ip: str, subnet: str, gateway: str, mo
             timeout=15
         )
         success = result.returncode == 0
+
         return {
             "success": success,
             "command": cmd,
@@ -60,7 +80,12 @@ def apply_nic_settings(adapter_name: str, ip: str, subnet: str, gateway: str, mo
         }
 
     except Exception as e:
-        return {"success": False, "command": cmd, "stdout": "", "stderr": str(e)}
+        return {
+            "success": False,
+            "command": cmd if "cmd" in locals() else "",
+            "stdout": "",
+            "stderr": str(e)
+        }
 
 
 def validate_ip_structure(ip: str) -> bool:
