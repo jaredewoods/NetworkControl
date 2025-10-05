@@ -129,7 +129,7 @@ def get_network_interfaces_deep():
     """
     Use PowerShell to gather verified adapter data with real gateways,
     DHCP/Static status, and hardware description.
-    Bluetooth, loopback, and virtual adapters are filtered out.
+    Bluetooth and virtual adapters are filtered out.
     """
     cmd = [
         "powershell",
@@ -140,17 +140,12 @@ def get_network_interfaces_deep():
             "@{n='IPAddress';e={$_.IPv4Address.IPAddress}}, "
             "@{n='PrefixLength';e={$_.IPv4Address.PrefixLength}}, "
             "@{n='Gateway';e={$_.IPv4DefaultGateway.NextHop}}, "
-            "@{n='DHCP';e={if ($_.NetIPInterface.Dhcp -eq 'Enabled') {'DHCP'} else {'Static'}}} "
+            "@{n='DHCP';e={"
+            " if ($_.IPv4Address.PrefixOrigin -eq 'Dhcp') {'DHCP'} "
+            " else {'Static'} } } "
             "| ConvertTo-Json -Depth 3"
         ),
     ]
-
-    ignore_pattern = re.compile(
-        r"(bluetooth|virtual|vmware|hyper-v|loopback|miniport|tap|tunnel|bridge)",
-        re.IGNORECASE,
-    )
-
-    stats = psutil.net_if_stats()
 
     try:
         result = subprocess.run(
@@ -159,14 +154,14 @@ def get_network_interfaces_deep():
             text=True,
             encoding="utf-8",
             errors="ignore",
-            timeout=10,
+            timeout=10
         )
-
         if not result.stdout.strip():
             raise RuntimeError("PowerShell returned no data")
 
         adapters = json.loads(result.stdout)
 
+        # Normalize JSON output
         if isinstance(adapters, dict):
             adapters = [adapters]
 
@@ -174,28 +169,20 @@ def get_network_interfaces_deep():
         for nic in adapters:
             desc = nic.get("InterfaceDescription", "") or ""
             name = nic.get("InterfaceAlias", "") or ""
-            ip = nic.get("IPAddress", "—") or "—"
 
-            if ignore_pattern.search(desc) or ignore_pattern.search(name):
+            # Filter out Bluetooth, virtual, etc.
+            if any(x in desc.lower() for x in ["bluetooth", "virtual", "vmware", "hyper-v", "loopback"]):
                 continue
-            if not ip or ip == "—":
+            if any(x in name.lower() for x in ["bluetooth", "virtual", "vmware", "hyper-v", "loopback"]):
                 continue
-
-            link_status = "Up"
-            try:
-                if name in stats and not stats[name].isup:
-                    link_status = "Down"
-            except Exception:
-                pass
 
             data.append({
                 "connection": name or "—",
                 "description": desc or "—",
-                "ip": ip,
+                "ip": nic.get("IPAddress", "—"),
                 "subnet": str(nic.get("PrefixLength", "—")),
                 "gateway": nic.get("Gateway", "—"),
                 "mode": nic.get("DHCP", "—"),
-                "link": link_status,
             })
 
         return data
@@ -207,6 +194,5 @@ def get_network_interfaces_deep():
             "ip": "—",
             "subnet": "—",
             "gateway": "—",
-            "mode": "—",
-            "link": "—",
+            "mode": "—"
         }]
