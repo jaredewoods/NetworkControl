@@ -168,13 +168,15 @@ class MainController:
             self.table.insertRow(row)
             self._set_readonly(row, 0, iface["connection"])
             self._set_readonly(row, 1, self._get_link_status_text(iface))
-            self.table.setItem(row, 2, QtWidgets.QTableWidgetItem(iface["mode"]))     # DHCP/Static
+            self._add_link_led(row, 1)
+            mode_item = QtWidgets.QTableWidgetItem(iface["mode"])
+            mode_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            self.table.setItem(row, 2, mode_item)
             self.table.setItem(row, 3, QtWidgets.QTableWidgetItem(iface["ip"]))       # IP
             self.table.setItem(row, 4, QtWidgets.QTableWidgetItem(iface["subnet"]))   # Subnet
             self.table.setItem(row, 5, QtWidgets.QTableWidgetItem(iface["gateway"]))  # Gateway
             self._set_readonly(row, 6, iface["description"])                          # Description
         self.table.resizeColumnsToContents()
-
 
     def _get_text(self, row, col):
         item = self.table.item(row, col)
@@ -185,6 +187,43 @@ class MainController:
         item.setFlags(item.flags() & ~QtCore.Qt.ItemFlag.ItemIsEditable)
         self.table.setItem(row, col, item)
 
+    # ------------------------------------------------------------
+    # LED Indicator (adds color next to text)
+    # ------------------------------------------------------------
+    def _add_link_led(self, row, col):
+        """
+        Inline LED (colored circle) inside the same text string.
+        Colors:
+            Red   = Down
+            Green = Network
+            Blue  = Internet
+        """
+        item = self.table.item(row, col)
+        if not item:
+            return
+
+        text = item.text().strip()
+        lower = text.lower()
+
+        if lower == "down":
+            color = "#E53935"  # Red
+        elif lower == "internet":
+            color = "#1E90FF"  # Blue
+        else:
+            color = "#32CD32"  # Green (Network)
+
+        # Unicode circle + color
+        html = f"<span style='color:{color}; font-size:12pt;'>●</span>  <span>{text}</span>"
+
+        # Set rich text directly on the cell
+        item.setText("")
+        label = QtWidgets.QLabel()
+        label.setTextFormat(QtCore.Qt.TextFormat.RichText)
+        label.setText(html)
+        label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.table.setCellWidget(row, col, label)
+
+    # ------------------------------------------------------------
     def _get_link_status_text(self, iface):
         link_state = iface.get("link", "—").lower()
         gateway = str(iface.get("gateway", "")).strip()
